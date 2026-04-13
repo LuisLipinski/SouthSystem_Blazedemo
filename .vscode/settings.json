@@ -10,6 +10,10 @@
         "/^cmd /c run_spike_test\\.bat$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "New-Item": true,
+        "Out-Null": true,
+        "Copy-Item": true,
+        "Get-CimInstance": true
     }
 }

@@ -1,9 +1,9 @@
 ﻿# BlazeDemo Performance Test
 
 ## Link do repositorio
-Substituir pelo link publico do GitHub:
+Repositorio publico no GitHub:
 
-`https://github.com/<seu-usuario>/blazedemo-performance-test`
+`https://github.com/LuisLipinski/SouthSystem_Blazedemo.git`
 
 ## Objetivo
 Automacao de teste de performance para o fluxo de compra de passagem no site:
@@ -30,7 +30,7 @@ Compra de passagem com sucesso:
 ### Teste de carga
 - Arquivo: `jmeter/blazedemo_load_test.jmx`
 - Grupo ativo: Load Thread Group
-- Usuarios: 300
+- Usuarios: 330
 - Ramp-up: 60s
 - Duracao: 180s
 - Throttle (ConstantThroughputTimer): 15000 amostras/min = 250 req/s alvo
@@ -38,8 +38,8 @@ Compra de passagem com sucesso:
 ### Teste de pico
 - Arquivo: `jmeter/blazedemo_spike_test.jmx`
 - Grupo ativo: Spike Thread Group
-- Usuarios: 500
-- Ramp-up: 5s
+- Usuarios: 450
+- Ramp-up: 8s
 - Duracao: 120s
 - Ramp-up abrupto simula spike real de trafego
 
@@ -51,9 +51,10 @@ Observacao:
 
 ### Pre-requisitos
 
-1. Windows
-2. Java 8+ instalado e disponivel no PATH
-3. JMeter 5.6.3
+1. Java 8+ instalado e disponivel no PATH
+2. JMeter 5.6.3
+
+### Windows (via scripts .bat)
 
 Os scripts tentam primeiro o caminho local:
 
@@ -83,12 +84,81 @@ Saidas:
 1. `results/spike_test_results.jtl`
 2. `results/spike_report/index.html`
 
+### Linux e macOS (via CLI)
+
+No Linux/macOS, execute diretamente com o comando `jmeter`.
+Se o comando nao estiver no PATH, use o caminho completo para `jmeter`.
+
+Executar carga:
+
+```bash
+jmeter -n -t jmeter/blazedemo_load_test.jmx -l results/load_test_results.jtl -e -o results/load_report
+```
+
+Executar pico:
+
+```bash
+jmeter -n -t jmeter/blazedemo_spike_test.jmx -l results/spike_test_results.jtl -e -o results/spike_report
+```
+
+Saidas:
+
+1. `results/load_test_results.jtl`
+2. `results/load_report/index.html`
+3. `results/spike_test_results.jtl`
+4. `results/spike_report/index.html`
+
+Importante:
+
+1. O parametro `-o` exige pasta vazia ou inexistente.
+2. Se necessario, remova pastas antigas antes de gerar o dashboard:
+
+```bash
+rm -rf results/load_report results/spike_report
+```
+
 ## Relatorio de execucao
+
+Rodada oficial considerada neste README:
+
+1. Data: 2026-04-12
+2. Load: 330 usuarios, ramp-up 60s, duracao 180s
+3. Spike: 450 usuarios, ramp-up 8s, duracao 120s
+4. Motivo da escolha: rodada completa, sem erros e com artefatos preservados no repositorio
 
 Fontes utilizadas:
 
 1. `results/load_report/statistics.json`
 2. `results/spike_report/statistics.json`
+
+## Evolucao de tuning
+
+| Execucao | Load config | Spike config | Load req/s aprox | Load P90 | Load erro | Spike req/s aprox | Spike P90 | Spike erro | Leitura |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Inicial | 150 usuarios / 60s | 250 usuarios / 10s | 110.61 | 8.79s | 0.36% | 131.43 | 11.55s | 7.34% | Muito abaixo do alvo |
+| Tuning 1 | 300 usuarios / 60s | 500 usuarios / 5s | 242.75 | 1.46s | 0.00% | 246.25 | 3.60s | 0.27% | Melhor desempenho observado |
+| Tuning 2 oficial | 330 usuarios / 60s | 450 usuarios / 8s | 243.80 | 1.48s | 0.00% | 201.80 | 8.15s | 0.00% | Melhor evidência estável preservada |
+
+Observacao:
+
+1. Uma rerun adicional da configuracao 300/500 foi descartada porque o spike travou no fechamento do JMeter e nao gerou dashboard final.
+2. Isso reforca a instabilidade do ambiente publico do BlazeDemo sob carga mais agressiva.
+
+## Melhor configuracao observada
+
+Melhor desempenho observado na evolucao: `Load 300 / Spike 500`.
+
+Motivos:
+
+1. Foi a configuracao que mais se aproximou da meta de 250 req/s tanto em load quanto em spike.
+2. Entregou o melhor P90 de spike entre as rodadas com throughput alto (3.60s), mesmo ainda acima do SLA.
+3. Manteve taxa de erro baixa no spike (0.27%).
+
+Decisao para entrega:
+
+1. A configuracao mantida nos arquivos do projeto e nos artefatos oficiais foi `Load 330 / Spike 450`.
+2. Motivo: rodada completa, sem erro, com relatorios consistentes e reproduziveis dentro do repositorio.
+3. A configuracao 300/500 ficou registrada na tabela de tuning como melhor desempenho observado, mas nao foi mantida como oficial porque a rerun posterior apresentou instabilidade no fechamento do teste.
 
 ### Resultado - Load Test
 
@@ -142,7 +212,7 @@ Threads necessarias = (250 req/s / 4) * 3.73s = 233 threads
 Com margem de 30%: ~300 threads
 ```
 
-Por isso o load test foi ajustado para 300 threads.
+Por isso o load test foi ajustado para 330 threads na rodada oficial.
 
 Limitacao do ambiente BlazeDemo:
 O blazedemo.com e um ambiente publico de demonstracao, compartilhado entre todos os usuarios. A latencia observada (P90 > 8s) nao reflete um sistema saudavel: indica que o servidor comeca a degradar sob carga. Em um sistema real com infra dedicada, os tempos seriam significativamente menores e o criterio de 250 req/s com P90 < 2s seria muito mais alcancavel.
@@ -151,7 +221,7 @@ O blazedemo.com e um ambiente publico de demonstracao, compartilhado entre todos
 
 ### Se o objetivo e atingir 250 req/s no BlazeDemo
 
-1. Aumentar o numero de threads progressivamente (300, 400, 500) ate saturar a vazao alvo.
+1. Aumentar o numero de threads progressivamente (330, 450, 550) ate saturar a vazao alvo.
 2. Monitorar se o aumento de threads gera aumento proporcional de throughput ou apenas de erros.
 3. Se o servidor comecar a retornar erros 5xx, a limitacao e do backend, nao do JMeter.
 
@@ -175,6 +245,10 @@ O blazedemo.com e um ambiente publico de demonstracao, compartilhado entre todos
 2. Dashboard pico: `results/spike_report/index.html`
 3. Log carga: `results/load_test_results.jtl`
 4. Log pico: `results/spike_test_results.jtl`
+5. Screenshot carga: `docs/screenshots/load_dashboard.png`
+6. Screenshot pico: `docs/screenshots/spike_dashboard.png`
+7. Arquivo da rodada oficial arquivada: `results/experiments/cfg_load330_spike450`
+8. Arquivo da rerun invalida arquivada: `results/experiments/cfg_load300_spike500_rerun_invalid`
 
 ## Consideracoes finais
 
